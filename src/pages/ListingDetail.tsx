@@ -1,276 +1,132 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Check, MapPin, Share2, Star, Users, Loader2 } from "lucide-react";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
-import { Button } from "@/components/ui/button";
-import { FavoriteButton } from "@/components/FavoriteButton";
-import { ReviewsSection } from "@/components/ReviewsSection";
-import { StarRating } from "@/components/StarRating";
-import { getListingBySlug } from "@/data/listings";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import NotFound from "./NotFound";
-import type { Database } from "@/integrations/supabase/types";
+import { useParams, Link } from "react-router-dom";
+import { ArrowLeft, MapPin, Phone, Globe, Star, Clock, Loader2 } from "lucide-react";
+import { useListing } from "@/hooks/useListings";
 
-type DbListing = Database["public"]["Tables"]["listings"]["Row"];
+export default function ListingDetail() {
+  const { id, slug } = useParams<{ id: string; slug: string }>();
+  const listingId = id || slug || "";
+  const { data, isLoading, isError } = useListing(listingId);
 
-interface DisplayListing {
-  id: string | null; // null when sourced from static mock
-  title: string;
-  subcategory: string;
-  image: string;
-  city: string;
-  neighborhood: string;
-  ageMin: number;
-  ageMax: number;
-  business: string;
-  longDescription: string;
-  highlights: string[];
-  schedule: string;
-  priceFrom: number;
-  priceUnit: string;
-  rating: number;
-  reviewCount: number;
-}
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
+  }
 
-const fromDb = (l: DbListing, businessName: string): DisplayListing => ({
-  id: l.id,
-  title: l.title,
-  subcategory: l.category,
-  image: l.image_url ?? "/placeholder.svg",
-  city: l.city,
-  neighborhood: l.address ?? "",
-  ageMin: l.age_min ?? 0,
-  ageMax: l.age_max ?? 18,
-  business: businessName,
-  longDescription: l.description ?? "",
-  highlights: [],
-  schedule: "",
-  priceFrom: l.price_cents ? l.price_cents / 100 : 0,
-  priceUnit: l.price_unit ?? "session",
-  rating: 0,
-  reviewCount: 0,
-});
-
-const ListingDetail = () => {
-  const { slug } = useParams();
-  const [loading, setLoading] = useState(true);
-  const [listing, setListing] = useState<DisplayListing | null>(null);
-  const [summary, setSummary] = useState<{ count: number; average: number }>({ count: 0, average: 0 });
-
-  useEffect(() => {
-    const load = async () => {
-      if (!slug) return;
-      setLoading(true);
-      // Try DB first (only approved listings due to RLS)
-      const { data } = await supabase
-        .from("listings")
-        .select("*")
-        .eq("slug", slug)
-        .eq("status", "approved")
-        .maybeSingle();
-
-      if (data) {
-        const { data: biz } = await supabase
-          .from("businesses")
-          .select("name")
-          .eq("id", data.business_id)
-          .maybeSingle();
-        setListing(fromDb(data, biz?.name ?? "Local business"));
-      } else {
-        const mock = getListingBySlug(slug);
-        if (mock) {
-          setListing({
-            id: null,
-            title: mock.title,
-            subcategory: mock.subcategory,
-            image: mock.image,
-            city: mock.city,
-            neighborhood: mock.neighborhood,
-            ageMin: mock.ageMin,
-            ageMax: mock.ageMax,
-            business: mock.business,
-            longDescription: mock.longDescription,
-            highlights: mock.highlights,
-            schedule: mock.schedule,
-            priceFrom: mock.priceFrom,
-            priceUnit: mock.priceUnit,
-            rating: mock.rating,
-            reviewCount: mock.reviewCount,
-          });
-        } else {
-          setListing(null);
-        }
-      }
-      setLoading(false);
-    };
-    load();
-  }, [slug]);
-
-  const handleBook = () =>
-    toast.success("Booking coming soon!", {
-      description: "We'll launch real bookings in the next update.",
-    });
-
-  if (loading) {
+  if (isError || !data?.data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="size-6 animate-spin text-primary" />
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <p className="text-gray-500">Listing not found.</p>
+        <Link to="/listings" className="text-blue-600 hover:underline text-sm">Back to listings</Link>
       </div>
     );
   }
 
-  if (!listing) return <NotFound />;
-
-  const ratingValue = listing.id ? summary.average : listing.rating;
-  const ratingCount = listing.id ? summary.count : listing.reviewCount;
+  const listing = data.data;
+  const categoryColors: Record<string, string> = {
+    Camps: "bg-green-100 text-green-700",
+    Classes: "bg-blue-100 text-blue-700",
+    Events: "bg-purple-100 text-purple-700",
+    "Birthday Spots": "bg-pink-100 text-pink-700",
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background font-body">
-      <SiteHeader />
-
-      <div className="container mx-auto pt-6">
-        <Link to="/browse" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-smooth">
-          <ArrowLeft className="size-4" /> Back to results
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <Link to="/listings" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-6 transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Back to listings
         </Link>
-      </div>
-
-      {/* Hero image */}
-      <section className="container mx-auto pt-6">
-        <div className="relative aspect-[16/8] md:aspect-[16/7] rounded-3xl overflow-hidden shadow-card">
-          <img
-            src={listing.image}
-            alt={listing.title}
-            width={1600}
-            height={700}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute top-4 right-4 flex gap-2">
-            {listing.id && <FavoriteButton listingId={listing.id} />}
-            <Button variant="soft" size="icon" className="bg-card/90 backdrop-blur"><Share2 className="size-4" /></Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="container mx-auto py-10 grid lg:grid-cols-[1fr_400px] gap-12">
-        {/* Main column */}
-        <div>
-          <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 capitalize">{listing.subcategory}</div>
-          <h1 className="font-display text-4xl md:text-5xl font-semibold text-balance leading-tight">
-            {listing.title}
-          </h1>
-          <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              {ratingCount > 0 ? (
-                <>
-                  <Star className="size-4 fill-accent text-accent" />
-                  <span className="font-semibold text-foreground">{ratingValue.toFixed(1)}</span>
-                  <span>({ratingCount} review{ratingCount === 1 ? "" : "s"})</span>
-                </>
-              ) : (
-                <span className="text-muted-foreground">No reviews yet</span>
-              )}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <MapPin className="size-4" /> {[listing.neighborhood, listing.city].filter(Boolean).join(", ")}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Users className="size-4" /> Ages {listing.ageMin}–{listing.ageMax}
-            </span>
-          </div>
-          <div className="mt-2 text-sm text-muted-foreground">
-            Hosted by <span className="text-foreground font-semibold">{listing.business}</span>
-          </div>
-
-          {listing.longDescription && (
-            <div className="mt-10 prose prose-stone max-w-none">
-              <h2 className="font-display text-2xl font-semibold mb-3">About this experience</h2>
-              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{listing.longDescription}</p>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+          {listing.photos && listing.photos.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-1 h-72">
+              {listing.photos.slice(0, 5).map((photo, i) => (
+                <div key={i} className={`overflow-hidden bg-gray-100 ${i === 0 ? "col-span-2 row-span-2" : ""}`}>
+                  <img src={photo} alt={`${listing.name} photo ${i + 1}`} className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/400x300?text=No+Image"; }} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="h-48 bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+              <span className="text-6xl">🎉</span>
             </div>
           )}
-
-          {listing.highlights.length > 0 && (
-            <div className="mt-10">
-              <h2 className="font-display text-2xl font-semibold mb-4">What's included</h2>
-              <ul className="grid sm:grid-cols-2 gap-3">
-                {listing.highlights.map((h) => (
-                  <li key={h} className="flex items-start gap-2.5">
-                    <span className="mt-0.5 size-5 rounded-full bg-primary-soft text-primary flex items-center justify-center shrink-0">
-                      <Check className="size-3" strokeWidth={3} />
-                    </span>
-                    <span className="text-sm">{h}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {listing.schedule && (
-            <div className="mt-10 p-6 bg-muted/40 rounded-3xl border border-border/40">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="size-5 text-primary" />
-                <h3 className="font-display text-lg font-semibold">Schedule</h3>
+          <div className="p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex-1">
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${categoryColors[listing.category] || "bg-gray-100 text-gray-700"}`}>
+                  {listing.category}
+                </span>
+                <h1 className="text-2xl font-bold text-gray-900 mt-2">{listing.name}</h1>
               </div>
-              <p className="text-sm text-muted-foreground">{listing.schedule}</p>
-            </div>
-          )}
-
-          {listing.id && (
-            <ReviewsSection listingId={listing.id} onSummaryChange={setSummary} />
-          )}
-        </div>
-
-        {/* Booking sidebar */}
-        <aside>
-          <div className="sticky top-24 bg-card border border-border/60 rounded-3xl p-6 shadow-card">
-            <div className="flex items-baseline gap-2 mb-1">
-              {listing.priceFrom === 0 ? (
-                <span className="font-display text-3xl font-bold text-primary">Free</span>
-              ) : (
-                <>
-                  <span className="font-display text-3xl font-bold">${listing.priceFrom}</span>
-                  <span className="text-sm text-muted-foreground">
-                    / {listing.priceUnit}
-                  </span>
-                </>
+              {listing.rating && (
+                <div className="flex flex-col items-center bg-yellow-50 rounded-xl p-3 border border-yellow-100">
+                  <div className="flex items-center gap-1">
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <span className="text-lg font-bold text-gray-900">{listing.rating.toFixed(1)}</span>
+                  </div>
+                  <span className="text-xs text-gray-500">{listing.review_count?.toLocaleString()} reviews</span>
+                </div>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
-              {ratingCount > 0 ? (
-                <>
-                  <StarRating value={ratingValue} size="sm" readOnly />
-                  <span className="font-semibold text-foreground">{ratingValue.toFixed(1)}</span>
-                  <span>· {ratingCount} review{ratingCount === 1 ? "" : "s"}</span>
-                </>
-              ) : (
-                <span>No reviews yet</span>
+            {listing.description && <p className="text-gray-600 mb-6 leading-relaxed">{listing.description}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {listing.address && (
+                <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
+                  <MapPin className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Address</p>
+                    <p className="text-sm text-gray-700">{listing.address}</p>
+                  </div>
+                </div>
+              )}
+              {listing.phone && (
+                <a href={`tel:${listing.phone}`} className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl hover:bg-blue-50 transition-colors">
+                  <Phone className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Phone</p>
+                    <p className="text-sm text-blue-600 font-medium">{listing.phone}</p>
+                  </div>
+                </a>
+              )}
+              {listing.website && (
+                <a href={listing.website} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl hover:bg-blue-50 transition-colors md:col-span-2">
+                  <Globe className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Website</p>
+                    <p className="text-sm text-blue-600 font-medium truncate">{listing.website}</p>
+                  </div>
+                </a>
               )}
             </div>
-
-            <Button onClick={handleBook} variant="hero" size="lg" className="w-full">
-              Book now
-            </Button>
-            {listing.id ? (
-              <FavoriteButton listingId={listing.id} variant="labeled" className="w-full mt-2" />
-            ) : (
-              <Button variant="outline" size="lg" className="w-full mt-2">
-                Message host
-              </Button>
+            {listing.hours && listing.hours.length > 0 && (
+              <div className="border-t pt-6">
+                <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-500" /> Hours
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {listing.hours.map((h, i) => (
+                    <div key={i} className="flex justify-between text-sm py-1.5 border-b border-gray-50">
+                      <span className="font-medium text-gray-700">{h.day_of_week}</span>
+                      <span className="text-gray-500">{h.open_time}{h.close_time ? ` – ${h.close_time}` : ""}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-
-            <div className="mt-5 pt-5 border-t border-border text-xs text-muted-foreground space-y-2">
-              <div className="flex justify-between"><span>Free cancellation</span><span className="text-foreground font-semibold">Up to 7 days</span></div>
-              <div className="flex justify-between"><span>Instant confirmation</span><span className="text-foreground font-semibold">Yes</span></div>
-              <div className="flex justify-between"><span>Verified business</span><span className="text-foreground font-semibold">✓</span></div>
+            <div className="mt-6 flex gap-3">
+              {listing.phone && (
+                <a href={`tel:${listing.phone}`} className="flex-1 text-center py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors">
+                  Call Now
+                </a>
+              )}
+              {listing.website && (
+                <a href={listing.website} target="_blank" rel="noopener noreferrer" className="flex-1 text-center py-3 border border-blue-600 text-blue-600 rounded-xl font-medium hover:bg-blue-50 transition-colors">
+                  Visit Website
+                </a>
+              )}
             </div>
           </div>
-        </aside>
-      </section>
-
-      <SiteFooter />
+        </div>
+      </div>
     </div>
   );
-};
-
-export default ListingDetail;
+}
