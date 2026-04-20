@@ -1,17 +1,40 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut, User as UserIcon, LayoutDashboard, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo-123kids.png";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export const SiteHeader = () => {
   const [open, setOpen] = useState(false);
+  const { user, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
+
   const navItems = [
     { to: "/browse?category=camps", label: "Camps" },
     { to: "/browse?category=classes", label: "Classes" },
     { to: "/browse?category=events", label: "Events" },
     { to: "/browse?category=birthday", label: "Birthdays" },
   ];
+
+  const initial =
+    (user?.user_metadata?.display_name as string | undefined)?.[0]?.toUpperCase() ??
+    user?.email?.[0]?.toUpperCase() ??
+    "U";
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/60">
@@ -36,9 +59,42 @@ export const SiteHeader = () => {
           <Button variant="ghost" size="sm" asChild>
             <Link to="/for-business">List your business</Link>
           </Button>
-          <Button variant="default" size="sm" asChild>
-            <Link to="/signin">Sign in</Link>
-          </Button>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 rounded-full hover:bg-muted px-1.5 py-1 transition-smooth">
+                  <Avatar className="size-8">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                      {initial}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/account"><UserIcon className="size-4 mr-2" /> Account</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard"><LayoutDashboard className="size-4 mr-2" /> My listings</Link>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin"><ShieldCheck className="size-4 mr-2" /> Admin</Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="size-4 mr-2" /> Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button variant="default" size="sm" asChild>
+              <Link to="/auth">Sign in</Link>
+            </Button>
+          )}
         </div>
 
         <button
@@ -67,9 +123,25 @@ export const SiteHeader = () => {
             <Link to="/for-business" className="px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium" onClick={() => setOpen(false)}>
               List your business
             </Link>
-            <Button asChild className="mt-2 mx-2">
-              <Link to="/signin" onClick={() => setOpen(false)}>Sign in</Link>
-            </Button>
+            {user ? (
+              <>
+                <Link to="/dashboard" className="px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium" onClick={() => setOpen(false)}>
+                  My listings
+                </Link>
+                {isAdmin && (
+                  <Link to="/admin" className="px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium" onClick={() => setOpen(false)}>
+                    Admin
+                  </Link>
+                )}
+                <Button variant="outline" className="mt-2 mx-2" onClick={() => { setOpen(false); handleSignOut(); }}>
+                  Sign out
+                </Button>
+              </>
+            ) : (
+              <Button asChild className="mt-2 mx-2">
+                <Link to="/auth" onClick={() => setOpen(false)}>Sign in</Link>
+              </Button>
+            )}
           </div>
         </div>
       )}
