@@ -109,12 +109,8 @@ export default function Dashboard() {
 
   const ensureBusinessOwnerRole = async () => {
     if (!user) return;
-    // Idempotent grant — RLS allows the user to view their own roles; insert is gated by the unique constraint.
-    await supabase
-      .from("user_roles")
-      .insert({ user_id: user.id, role: "business_owner" } as never)
-      .then(() => undefined)
-      .catch(() => undefined);
+    // Idempotent — unique constraint on (user_id, role) prevents duplicates.
+    await supabase.from("user_roles").insert({ user_id: user.id, role: "business_owner" });
   };
 
   const handleCreateBusiness = async (e: React.FormEvent) => {
