@@ -1,11 +1,16 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, MapPin, Phone, Globe, Star, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Globe, Star, Clock, Loader2, Calendar, Users, Tag } from "lucide-react";
 import { useListing } from "@/hooks/useListings";
+import { useSchedules } from "@/hooks/useBooking";
+import { BookingModal } from "@/components/BookingModal";
 
 export default function ListingDetail() {
   const { id, slug } = useParams<{ id: string; slug: string }>();
   const listingId = id || slug || "";
   const { data, isLoading, isError } = useListing(listingId);
+  const { data: schedulesData } = useSchedules(listingId);
+  const [showBooking, setShowBooking] = useState(false);
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>;
@@ -21,6 +26,10 @@ export default function ListingDetail() {
   }
 
   const listing = data.data;
+  const schedules = schedulesData?.data || [];
+  const lowestPrice = schedules.length > 0 ? Math.min(...schedules.map(s => s.price)) : null;
+  const hasFree = schedules.some(s => s.price === 0);
+
   const categoryColors: Record<string, string> = {
     Camps: "bg-green-100 text-green-700",
     Classes: "bg-blue-100 text-blue-700",
@@ -34,7 +43,9 @@ export default function ListingDetail() {
         <Link to="/listings" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to listings
         </Link>
+
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+          {/* Photos */}
           {listing.photos && listing.photos.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-1 h-72">
               {listing.photos.slice(0, 5).map((photo, i) => (
@@ -49,7 +60,9 @@ export default function ListingDetail() {
               <span className="text-6xl">🎉</span>
             </div>
           )}
+
           <div className="p-6">
+            {/* Title & Rating */}
             <div className="flex items-start gap-3 mb-4">
               <div className="flex-1">
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${categoryColors[listing.category] || "bg-gray-100 text-gray-700"}`}>
@@ -67,7 +80,43 @@ export default function ListingDetail() {
                 </div>
               )}
             </div>
+
             {listing.description && <p className="text-gray-600 mb-6 leading-relaxed">{listing.description}</p>}
+
+            {/* Booking section */}
+            {schedules.length > 0 && (
+              <div className="bg-blue-50 rounded-2xl p-5 mb-6 border border-blue-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="font-bold text-gray-900 text-lg">
+                      {hasFree ? "Free trial available!" : lowestPrice !== null ? `From $${lowestPrice}` : "Book Now"}
+                    </p>
+                    <p className="text-sm text-gray-500">{schedules.length} option{schedules.length > 1 ? "s" : ""} available</p>
+                  </div>
+                  <button
+                    onClick={() => setShowBooking(true)}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+                  >
+                    Book Now
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {schedules.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-blue-100">
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-sm font-medium text-gray-700">{s.title}</span>
+                      </div>
+                      <span className="text-sm font-bold text-blue-600">
+                        {s.price === 0 ? "FREE" : `$${s.price}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {listing.address && (
                 <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
@@ -97,6 +146,8 @@ export default function ListingDetail() {
                 </a>
               )}
             </div>
+
+            {/* Hours */}
             {listing.hours && listing.hours.length > 0 && (
               <div className="border-t pt-6">
                 <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -112,21 +163,43 @@ export default function ListingDetail() {
                 </div>
               </div>
             )}
-            <div className="mt-6 flex gap-3">
-              {listing.phone && (
-                <a href={`tel:${listing.phone}`} className="flex-1 text-center py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors">
-                  Call Now
-                </a>
-              )}
-              {listing.website && (
-                <a href={listing.website} target="_blank" rel="noopener noreferrer" className="flex-1 text-center py-3 border border-blue-600 text-blue-600 rounded-xl font-medium hover:bg-blue-50 transition-colors">
-                  Visit Website
-                </a>
-              )}
-            </div>
+
+            {/* CTA buttons */}
+            {schedules.length === 0 && (
+              <div className="mt-6 flex gap-3">
+                {listing.phone && (
+                  <a href={`tel:${listing.phone}`} className="flex-1 text-center py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors">
+                    Call Now
+                  </a>
+                )}
+                {listing.website && (
+                  <a href={listing.website} target="_blank" rel="noopener noreferrer" className="flex-1 text-center py-3 border border-blue-600 text-blue-600 rounded-xl font-medium hover:bg-blue-50 transition-colors">
+                    Visit Website
+                  </a>
+                )}
+              </div>
+            )}
+
+            {schedules.length > 0 && (
+              <button
+                onClick={() => setShowBooking(true)}
+                className="w-full mt-6 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                Book Now {lowestPrice !== null && lowestPrice > 0 ? `· From $${lowestPrice}` : hasFree ? "· Free Trial Available" : ""}
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {showBooking && (
+        <BookingModal
+          listingId={listingId}
+          listingName={listing.name}
+          onClose={() => setShowBooking(false)}
+        />
+      )}
     </div>
   );
 }
