@@ -1,4 +1,4 @@
-tsximport { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -27,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/browse" element={<Browse />} />
             <Route path="/listings" element={<Listings />} />
+            <Route path="/listing/:id" element={<ListingDetail />} />
             <Route path="/listing/:slug" element={<ListingDetail />} />
             <Route path="/for-business" element={<ForBusiness />} />
             <Route path="/auth" element={<Auth />} />
