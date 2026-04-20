@@ -107,11 +107,8 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const ensureBusinessOwnerRole = async () => {
-    if (!user) return;
-    // Idempotent — unique constraint on (user_id, role) prevents duplicates.
-    await supabase.from("user_roles").insert({ user_id: user.id, role: "business_owner" });
-  };
+  // Note: business_owner role isn't required for listing creation (RLS keys off owner_id + business ownership).
+
 
   const handleCreateBusiness = async (e: React.FormEvent) => {
     e.preventDefault();
