@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import logo from "@/assets/logo-123kids.jpg";
 
 export const SiteHeader = () => {
   const [open, setOpen] = useState(false);
