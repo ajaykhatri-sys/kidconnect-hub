@@ -26,7 +26,7 @@ export const BusinessCTA = () => {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button variant="hero" size="lg" asChild>
-                <Link to="/for-business">List your business</Link>
+                <Link to="/dashboard">List your business</Link>
               </Button>
               <Button variant="outline" size="lg" asChild className="border-secondary-foreground/20 bg-transparent text-secondary-foreground hover:bg-secondary-foreground/10 hover:border-secondary-foreground/40">
                 <Link to="/for-business">See pricing</Link>
