@@ -1,3 +1,5 @@
+import { FeaturedListings } from "@/components/FeaturedListings";
+import { CategorySection } from "@/components/CategorySection";
 import { Link } from "react-router-dom";
 import { Star, Shield, Heart } from "lucide-react";
 import hero from "@/assets/hero-kids.jpg";
@@ -96,5 +98,15 @@ const Index = () => {
     </div>
   );
 };
+
+// Featured section injected
+function HomepageSections() {
+  return (
+    <>
+      <CategorySection />
+      <FeaturedListings />
+    </>
+  );
+}
 
 export default Index;
