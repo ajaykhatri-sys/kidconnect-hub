@@ -1,63 +1,69 @@
 import { Link } from "react-router-dom";
-import { Star, MapPin } from "lucide-react";
-import type { Listing } from "@/data/listings";
+import { MapPin, Phone, Star } from "lucide-react";
+import { Listing } from "@/hooks/useListings";
 
-const priceLabel = (unit: Listing["priceUnit"]) =>
-  ({ session: "/ session", week: "/ week", month: "/ month", event: "/ event" }[unit]);
+interface ListingCardProps {
+  listing: Listing;
+}
 
-export const ListingCard = ({ listing }: { listing: Listing }) => {
+export function ListingCard({ listing }: ListingCardProps) {
+  const categoryColors: Record<string, string> = {
+    Camps: "bg-green-100 text-green-700",
+    Classes: "bg-blue-100 text-blue-700",
+    Events: "bg-purple-100 text-purple-700",
+    "Birthday Spots": "bg-pink-100 text-pink-700",
+  };
+
   return (
-    <Link
-      to={`/listing/${listing.slug}`}
-      className="group block animate-fade-up"
-    >
-      <article className="bg-card rounded-3xl overflow-hidden shadow-card hover:shadow-card-hover transition-spring hover:-translate-y-1 border border-border/40">
-        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          <img
-            src={listing.image}
-            alt={listing.title}
-            loading="lazy"
-            width={1000}
-            height={750}
-            className="w-full h-full object-cover transition-spring group-hover:scale-105"
-          />
-          <div className="absolute top-3 left-3 bg-card/95 backdrop-blur px-3 py-1 rounded-full text-xs font-semibold text-foreground shadow-soft">
-            {listing.subcategory}
-          </div>
+    <Link to={`/listing/${listing.id}`} className="block group">
+      <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100">
+        <div className="relative h-48 bg-gray-100 overflow-hidden">
+          {listing.photo ? (
+            <img
+              src={listing.photo}
+              alt={listing.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "https://placehold.co/400x300?text=No+Image";
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+              <span className="text-4xl">🎉</span>
+            </div>
+          )}
+          <span className={`absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full ${categoryColors[listing.category] || "bg-gray-100 text-gray-700"}`}>
+            {listing.category}
+          </span>
         </div>
-        <div className="p-5">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="font-display text-lg font-semibold leading-snug text-foreground group-hover:text-primary transition-smooth text-balance">
-              {listing.title}
-            </h3>
-            <div className="flex items-center gap-1 shrink-0 mt-1">
-              <Star className="size-4 fill-accent text-accent" />
-              <span className="text-sm font-semibold">{listing.rating}</span>
-              <span className="text-xs text-muted-foreground">({listing.reviewCount})</span>
+        <div className="p-4">
+          <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2 mb-2 group-hover:text-blue-600 transition-colors">
+            {listing.name}
+          </h3>
+          {listing.rating && (
+            <div className="flex items-center gap-1 mb-2">
+              <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+              <span className="text-sm font-medium text-gray-700">{listing.rating.toFixed(1)}</span>
+              <span className="text-xs text-gray-400">({listing.review_count?.toLocaleString()})</span>
             </div>
-          </div>
-          <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
-            <MapPin className="size-3" />
-            {listing.neighborhood} · {listing.city}
-          </div>
-          <p className="mt-3 text-sm text-muted-foreground line-clamp-2">{listing.shortDescription}</p>
-          <div className="mt-4 flex items-end justify-between">
-            <div className="text-xs text-muted-foreground">
-              Ages {listing.ageMin}–{listing.ageMax}
+          )}
+          {listing.city && (
+            <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+              <MapPin className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{listing.city}</span>
             </div>
-            <div className="font-display">
-              {listing.priceFrom === 0 ? (
-                <span className="text-base font-bold text-primary">Free</span>
-              ) : (
-                <>
-                  <span className="text-lg font-bold text-foreground">${listing.priceFrom}</span>
-                  <span className="text-xs text-muted-foreground ml-1">{priceLabel(listing.priceUnit)}</span>
-                </>
-              )}
+          )}
+          {listing.phone && (
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Phone className="w-3 h-3 flex-shrink-0" />
+              <span>{listing.phone}</span>
             </div>
-          </div>
+          )}
+          {listing.description && (
+            <p className="text-xs text-gray-500 mt-2 line-clamp-2">{listing.description}</p>
+          )}
         </div>
-      </article>
+      </div>
     </Link>
   );
-};
+}
