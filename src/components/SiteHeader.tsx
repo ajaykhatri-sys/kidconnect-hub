@@ -16,10 +16,8 @@ export const SiteHeader = () => {
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/60">
       <div className="container mx-auto flex h-16 items-center justify-between gap-6">
-        <Link to="/" className="flex items-center gap-1.5 group">
-          <span className="font-display text-2xl font-bold tracking-tight text-foreground">
-            123<span className="text-primary">kids</span>
-          </span>
+        <Link to="/" className="flex items-center gap-2 group" aria-label="123kids home">
+          <img src={logo} alt="123kids logo" className="h-12 md:h-14 w-auto object-contain" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
