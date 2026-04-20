@@ -1,7 +1,5 @@
-import { FeaturedListings } from "@/components/FeaturedListings";
-import { CategorySection } from "@/components/CategorySection";
 import { Link } from "react-router-dom";
-import { Star, Shield, Heart } from "lucide-react";
+import { Star, Shield, Heart, Loader2 } from "lucide-react";
 import hero from "@/assets/hero-kids.jpg";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -10,10 +8,11 @@ import { CategoryTiles } from "@/components/CategoryTiles";
 import { ListingCard } from "@/components/ListingCard";
 import { HowItWorks } from "@/components/HowItWorks";
 import { BusinessCTA } from "@/components/BusinessCTA";
-import { getFeatured } from "@/data/listings";
+import { useFeaturedListings } from "@/hooks/useListings";
 
 const Index = () => {
-  const featured = getFeatured();
+  const { data, isLoading } = useFeaturedListings();
+  const featured = data?.data || [];
 
   return (
     <div className="min-h-screen flex flex-col bg-background font-body">
@@ -46,7 +45,6 @@ const Index = () => {
                 Camps, classes, weekend events and birthday spots — discovered by parents, loved by kids.
               </p>
             </div>
-
             <div className="mt-10 max-w-4xl animate-fade-up" style={{ animationDelay: "0.2s" }}>
               <SearchBar />
             </div>
@@ -72,7 +70,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured listings */}
+      {/* Featured listings - real Palm Beach County data */}
       <section className="container mx-auto py-16">
         <div className="flex items-end justify-between mb-8">
           <div>
@@ -81,32 +79,29 @@ const Index = () => {
               Parent picks worth booking now.
             </h2>
           </div>
-          <Link to="/browse" className="hidden md:inline-flex text-sm font-semibold text-primary hover:underline underline-offset-4">
+          <Link to="/listings" className="hidden md:inline-flex text-sm font-semibold text-primary hover:underline underline-offset-4">
             See all listings →
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featured.map((l) => <ListingCard key={l.id} listing={l} />)}
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featured.slice(0, 4).map((l) => (
+              <ListingCard key={l.id} listing={l} />
+            ))}
+          </div>
+        )}
       </section>
 
       <CategoryTiles />
       <HowItWorks />
       <BusinessCTA />
-
       <SiteFooter />
     </div>
   );
 };
-
-// Featured section injected
-function HomepageSections() {
-  return (
-    <>
-      <CategorySection />
-      <FeaturedListings />
-    </>
-  );
-}
 
 export default Index;
