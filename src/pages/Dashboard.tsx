@@ -143,7 +143,6 @@ export default function Dashboard() {
       toast.error(error.message);
       return;
     }
-    await ensureBusinessOwnerRole();
     toast.success("Business created");
     setBName(""); setBCity(""); setBEmail(""); setBWebsite(""); setBDesc("");
     setBusinesses((prev) => [data!, ...prev]);
