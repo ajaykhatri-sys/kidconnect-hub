@@ -17,6 +17,7 @@ export interface Listing {
   lat: number;
   lng: number;
   photo: string;
+  slug: string;
   created_at: string;
 }
 
@@ -52,8 +53,9 @@ async function fetchListings(params: ListingsParams = {}) {
   return data as { success: boolean; data: Listing[]; pagination: Pagination };
 }
 
-async function fetchListing(id: string) {
-  const res = await fetch(`${API_BASE}/api/listings/${id}`);
+async function fetchListing(slugOrId: string) {
+  // Try slug first, fall back to ID
+  const res = await fetch(`${API_BASE}/api/listings/${slugOrId}`);
   const data = await res.json();
   return data as { success: boolean; data: ListingDetail };
 }
@@ -89,33 +91,24 @@ export function useListings(params: ListingsParams = {}) {
   });
 }
 
-export function useListing(id: string) {
+export function useListing(slugOrId: string) {
   return useQuery({
-    queryKey: ["listing", id],
-    queryFn: () => fetchListing(id),
-    enabled: !!id,
+    queryKey: ["listing", slugOrId],
+    queryFn: () => fetchListing(slugOrId),
+    enabled: !!slugOrId,
   });
 }
 
 export function useFeaturedListings() {
-  return useQuery({
-    queryKey: ["featured"],
-    queryFn: fetchFeatured,
-  });
+  return useQuery({ queryKey: ["featured"], queryFn: fetchFeatured });
 }
 
 export function useCategories() {
-  return useQuery({
-    queryKey: ["categories"],
-    queryFn: fetchCategories,
-  });
+  return useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
 }
 
 export function useCities() {
-  return useQuery({
-    queryKey: ["cities"],
-    queryFn: fetchCities,
-  });
+  return useQuery({ queryKey: ["cities"], queryFn: fetchCities });
 }
 
 export function useSearch(q: string) {
