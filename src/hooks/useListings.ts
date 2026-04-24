@@ -54,7 +54,6 @@ async function fetchListings(params: ListingsParams = {}) {
 }
 
 async function fetchListing(slugOrId: string) {
-  // Try slug first, fall back to ID
   const res = await fetch(`${API_BASE}/api/listings/${slugOrId}`);
   const data = await res.json();
   return data as { success: boolean; data: ListingDetail };
@@ -85,18 +84,11 @@ async function searchListings(q: string) {
 }
 
 export function useListings(params: ListingsParams = {}) {
-  return useQuery({
-    queryKey: ["listings", params],
-    queryFn: () => fetchListings(params),
-  });
+  return useQuery({ queryKey: ["listings", params], queryFn: () => fetchListings(params) });
 }
 
 export function useListing(slugOrId: string) {
-  return useQuery({
-    queryKey: ["listing", slugOrId],
-    queryFn: () => fetchListing(slugOrId),
-    enabled: !!slugOrId,
-  });
+  return useQuery({ queryKey: ["listing", slugOrId], queryFn: () => fetchListing(slugOrId), enabled: !!slugOrId });
 }
 
 export function useFeaturedListings() {
@@ -112,9 +104,5 @@ export function useCities() {
 }
 
 export function useSearch(q: string) {
-  return useQuery({
-    queryKey: ["search", q],
-    queryFn: () => searchListings(q),
-    enabled: q.length > 2,
-  });
+  return useQuery({ queryKey: ["search", q], queryFn: () => searchListings(q), enabled: q.length > 2 });
 }
