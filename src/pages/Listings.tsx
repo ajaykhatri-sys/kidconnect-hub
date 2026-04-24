@@ -1,20 +1,32 @@
 import { useState } from "react";
-import { Search, Filter, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Search, X, Star, MapPin, Phone, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useListings, useCities } from "@/hooks/useListings";
-import { ListingCard } from "@/components/ListingCard";
 
-const CATEGORIES = ["All", "Camps", "Classes", "Events", "Birthday Spots"];
+const CATEGORIES = ["Camps", "Classes", "Events", "Birthday Spots"];
+
+const categoryMeta: Record<string, { emoji: string; color: string }> = {
+  Camps: { emoji: "🏕️", color: "bg-green-100 text-green-700" },
+  Classes: { emoji: "📚", color: "bg-blue-100 text-blue-700" },
+  Events: { emoji: "🎉", color: "bg-purple-100 text-purple-700" },
+  "Birthday Spots": { emoji: "🎂", color: "bg-pink-100 text-pink-700" },
+};
 
 export default function Listings() {
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedCity, setSelectedCity] = useState("");
-  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [city, setCity] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError } = useListings({
-    category: selectedCategory || undefined,
-    city: selectedCity || undefined,
+    category: category || undefined,
+    city: city || undefined,
     search: search || undefined,
     page,
     limit: 20,
@@ -22,113 +34,249 @@ export default function Listings() {
 
   const { data: citiesData } = useCities();
 
+  const listings = data?.data || [];
+  const pagination = data?.pagination;
+  const cities = citiesData?.data || [];
+  const hasFilters = category || city || search;
+
+  const clearFilters = () => {
+    setCategory("");
+    setCity("");
+    setSearch("");
+    setSearchInput("");
+    setPage(1);
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearch(searchInput);
     setPage(1);
   };
 
-  const handleCategory = (cat: string) => {
-    setSelectedCategory(cat === "All" ? "" : cat);
-    setPage(1);
-  };
-
-  const listings = data?.data || [];
-  const pagination = data?.pagination;
-  const cities = citiesData?.data || [];
+  const heading = category
+    ? `${categoryMeta[category]?.emoji || ""} ${category}`
+    : "All Activities";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <form onSubmit={handleSearch} className="flex gap-2 mb-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search camps, classes, events..."
+    <div className="min-h-screen flex flex-col bg-background font-body">
+      <SiteHeader />
+
+      {/* Hero/Filter Bar */}
+      <section className="bg-gradient-warm border-b border-border/40">
+        <div className="container mx-auto py-10">
+          <h1 className="font-display text-4xl md:text-5xl font-semibold text-balance">
+            {heading}
+            {city && <span className="text-primary"> in {city}</span>}
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            {isLoading ? "Loading..." : `${pagination?.total || 0} ${pagination?.total === 1 ? "result" : "results"} found`}
+          </p>
+
+          {/* Search & Filter Bar */}
+          <form
+            onSubmit={handleSearch}
+            className="mt-8 grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3 bg-card p-3 rounded-3xl shadow-soft border border-border/40"
+          >
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Search camps, classes, events..."
+                className="pl-10 h-11 rounded-2xl border-border bg-background"
               />
             </div>
-            <button type="submit" className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
-              Search
-            </button>
-          </form>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => handleCategory(cat)}
-                className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  (cat === "All" && !selectedCategory) || selectedCategory === cat
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex gap-6">
-          <div className="hidden lg:block w-56 flex-shrink-0">
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 sticky top-28">
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Filter className="w-4 h-4" /> Filter by City
-              </h3>
-              <div className="space-y-1 max-h-80 overflow-y-auto">
-                <button
-                  onClick={() => { setSelectedCity(""); setPage(1); }}
-                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${!selectedCity ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
-                >
-                  All Cities
-                </button>
+            <Select value={city} onValueChange={(v) => { setCity(v === "all" ? "" : v); setPage(1); }}>
+              <SelectTrigger className="h-11 rounded-2xl w-full md:w-48">
+                <SelectValue placeholder="Any city" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any city</SelectItem>
                 {cities.map((c) => (
-                  <button
-                    key={c.city}
-                    onClick={() => { setSelectedCity(c.city); setPage(1); }}
-                    className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedCity === c.city ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
-                  >
-                    {c.city} <span className="text-gray-400">({c.count})</span>
-                  </button>
+                  <SelectItem key={c.city} value={c.city}>{c.city}</SelectItem>
                 ))}
-              </div>
-            </div>
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-gray-500">
-                {isLoading ? "Loading..." : (
-                  <><span className="font-semibold text-gray-900">{pagination?.total || 0}</span> listings found{selectedCategory && ` in ${selectedCategory}`}{selectedCity && ` · ${selectedCity}`}{search && ` · "${search}"`}</>
-                )}
-              </p>
-            </div>
-            {isLoading && <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>}
-            {isError && <div className="text-center py-20"><p className="text-gray-500">Failed to load listings. Please try again.</p></div>}
-            {!isLoading && !isError && listings.length === 0 && <div className="text-center py-20"><p className="text-2xl mb-2">🔍</p><p className="text-gray-500">No listings found.</p></div>}
-            {!isLoading && listings.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {listings.map((listing) => <ListingCard key={listing.id} listing={listing} />)}
-              </div>
-            )}
-            {pagination && pagination.pages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-8">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm text-gray-600">Page {page} of {pagination.pages}</span>
-                <button onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))} disabled={page === pagination.pages} className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
+              </SelectContent>
+            </Select>
+            <Select value={category} onValueChange={(v) => { setCategory(v === "all" ? "" : v); setPage(1); }}>
+              <SelectTrigger className="h-11 rounded-2xl w-full md:w-44">
+                <SelectValue placeholder="Any category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any category</SelectItem>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>{categoryMeta[c]?.emoji} {c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="submit" className="h-11 rounded-2xl px-6">
+              Search
+            </Button>
+          </form>
+
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="size-3" /> Clear filters
+            </button>
+          )}
         </div>
-      </div>
+      </section>
+
+      {/* Category Pills */}
+      <section className="border-b border-border/40 bg-background">
+        <div className="container mx-auto py-4 flex gap-2 overflow-x-auto">
+          <button
+            onClick={() => { setCategory(""); setPage(1); }}
+            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+              !category
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/40"
+            }`}
+          >
+            All
+          </button>
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => { setCategory(cat); setPage(1); }}
+              className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                category === cat
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/40"
+              }`}
+            >
+              {categoryMeta[cat]?.emoji} {cat}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Results */}
+      <section className="container mx-auto py-12 flex-1">
+        {isLoading && (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        )}
+
+        {isError && (
+          <div className="text-center py-24">
+            <h2 className="font-display text-2xl font-semibold mb-2">Something went wrong</h2>
+            <p className="text-muted-foreground mb-6">Could not load listings. Please try again.</p>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </div>
+        )}
+
+        {!isLoading && !isError && listings.length === 0 && (
+          <div className="text-center py-24">
+            <h2 className="font-display text-2xl font-semibold mb-2">No matches yet</h2>
+            <p className="text-muted-foreground mb-6">Try widening your filters.</p>
+            <Button variant="outline" onClick={clearFilters}>Clear filters</Button>
+          </div>
+        )}
+
+        {!isLoading && listings.length > 0 && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {listings.map((listing) => {
+                const meta = categoryMeta[listing.category];
+                return (
+                  <Link
+                    key={listing.id}
+                    to={`/listing/${listing.id}`}
+                    className="group bg-card rounded-3xl shadow-soft border border-border/40 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                  >
+                    {/* Photo */}
+                    <div className="relative h-48 bg-muted overflow-hidden">
+                      {listing.photo ? (
+                        <img
+                          src={listing.photo}
+                          alt={listing.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://placehold.co/400x300?text=No+Image";
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-warm">
+                          <span className="text-4xl">{meta?.emoji || "🎉"}</span>
+                        </div>
+                      )}
+                      <span className={`absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full ${meta?.color || "bg-muted text-muted-foreground"}`}>
+                        {listing.category}
+                      </span>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4">
+                      <h3 className="font-display font-semibold text-foreground text-sm leading-tight line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+                        {listing.name}
+                      </h3>
+
+                      {listing.rating && (
+                        <div className="flex items-center gap-1 mb-2">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                          <span className="text-sm font-medium text-foreground">{listing.rating.toFixed(1)}</span>
+                          <span className="text-xs text-muted-foreground">({listing.review_count?.toLocaleString()})</span>
+                        </div>
+                      )}
+
+                      {listing.city && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                          <MapPin className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">{listing.city}</span>
+                        </div>
+                      )}
+
+                      {listing.phone && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Phone className="w-3 h-3 flex-shrink-0" />
+                          <span>{listing.phone}</span>
+                        </div>
+                      )}
+
+                      {listing.description && (
+                        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{listing.description}</p>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            {pagination && pagination.pages > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-12">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="rounded-xl"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground font-medium">
+                  Page {page} of {pagination.pages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
+                  disabled={page === pagination.pages}
+                  className="rounded-xl"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      <SiteFooter />
     </div>
   );
 }
