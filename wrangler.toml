@@ -1,0 +1,12 @@
+name = "kidconnect-hub"
+compatibility_date = "2024-01-01"
+main = "./public/_worker.js"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "123kids-listings"
+database_id = "1d0993c6-cd55-4a60-aa8a-da7d25214549"
