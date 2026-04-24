@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useListing } from "@/hooks/useListings";
 import { useSchedules } from "@/hooks/useBooking";
+import { useSEO } from "@/hooks/useSEO";
 import { BookingModal } from "@/components/BookingModal";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -19,7 +20,7 @@ const categoryMeta: Record<string, { emoji: string; color: string }> = {
   "Birthday Spots": { emoji: "🎂", color: "bg-pink-100 text-pink-700" },
 };
 
-export default function ListingDetail() {
+function ListingDetailContent() {
   const { id, slug } = useParams<{ id: string; slug: string }>();
   const listingId = id || slug || "";
   const { data, isLoading, isError } = useListing(listingId);
@@ -27,6 +28,63 @@ export default function ListingDetail() {
   const [showBooking, setShowBooking] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
   const [saved, setSaved] = useState(false);
+
+  const listing = data?.data;
+  const schedules = schedulesData?.data || [];
+  const lowestPrice = schedules.length > 0 ? Math.min(...schedules.map((s: any) => s.price)) : null;
+  const hasFree = schedules.some((s: any) => s.price === 0);
+
+  // SEO - generates all meta tags + JSON-LD schema
+  useSEO(listing ? {
+    title: `${listing.name} — ${listing.category} in ${listing.city}, FL`,
+    description: listing.description
+      ? listing.description.slice(0, 160)
+      : `${listing.name} offers ${listing.category.toLowerCase()} for kids in ${listing.city}, Florida. ${listing.rating ? `Rated ${listing.rating}/5 by ${listing.review_count} parents.` : ""} Book online at 123Kids.`,
+    image: listing.photos?.[0],
+    url: `/listing/${listing.id}`,
+    type: "website",
+    schema: {
+      "@context": "https://schema.org",
+      "@type": listing.category === "Events" ? "Event" : "LocalBusiness",
+      "name": listing.name,
+      "description": listing.description || `${listing.name} — ${listing.category} for kids in ${listing.city}, FL`,
+      "image": listing.photos || [],
+      "url": `https://www.123kids.com/listing/${listing.id}`,
+      "telephone": listing.phone || undefined,
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": listing.address?.split(",")[0] || "",
+        "addressLocality": listing.city,
+        "addressRegion": "FL",
+        "addressCountry": "US",
+        "postalCode": listing.zip || "",
+      },
+      "geo": listing.lat ? {
+        "@type": "GeoCoordinates",
+        "latitude": listing.lat,
+        "longitude": listing.lng,
+      } : undefined,
+      ...(listing.rating ? {
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": listing.rating,
+          "reviewCount": listing.review_count,
+          "bestRating": 5,
+          "worstRating": 1,
+        }
+      } : {}),
+      ...(lowestPrice !== null ? {
+        "priceRange": hasFree ? "Free" : `From $${lowestPrice}`,
+        "offers": schedules.map((s: any) => ({
+          "@type": "Offer",
+          "name": s.title,
+          "price": s.price,
+          "priceCurrency": "USD",
+        })),
+      } : {}),
+      "sameAs": listing.website ? [listing.website] : [],
+    }
+  } : {});
 
   if (isLoading) {
     return (
@@ -40,7 +98,7 @@ export default function ListingDetail() {
     );
   }
 
-  if (isError || !data?.data) {
+  if (isError || !listing) {
     return (
       <div className="min-h-screen flex flex-col bg-background font-body">
         <SiteHeader />
@@ -55,12 +113,8 @@ export default function ListingDetail() {
     );
   }
 
-  const listing = data.data;
-  const schedules = schedulesData?.data || [];
   const photos = listing.photos || [];
   const meta = categoryMeta[listing.category] || { emoji: "🎉", color: "bg-muted text-muted-foreground" };
-  const lowestPrice = schedules.length > 0 ? Math.min(...schedules.map((s: any) => s.price)) : null;
-  const hasFree = schedules.some((s: any) => s.price === 0);
 
   return (
     <div className="min-h-screen flex flex-col bg-background font-body">
@@ -73,54 +127,36 @@ export default function ListingDetail() {
             <>
               <img
                 src={photos[activePhoto]}
-                alt={listing.name}
+                alt={`${listing.name} — ${listing.category} in ${listing.city}`}
                 className="w-full h-full object-cover transition-opacity duration-300"
                 onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/1200x520?text=No+Image"; }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-              {/* Photo navigation */}
               {photos.length > 1 && (
                 <>
-                  <button
-                    onClick={() => setActivePhoto((p) => Math.max(0, p - 1))}
-                    disabled={activePhoto === 0}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-soft hover:bg-white transition-colors disabled:opacity-40"
-                  >
+                  <button onClick={() => setActivePhoto((p) => Math.max(0, p - 1))} disabled={activePhoto === 0}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-soft hover:bg-white transition-colors disabled:opacity-40">
                     <ChevronLeft className="w-5 h-5 text-foreground" />
                   </button>
-                  <button
-                    onClick={() => setActivePhoto((p) => Math.min(photos.length - 1, p + 1))}
-                    disabled={activePhoto === photos.length - 1}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-soft hover:bg-white transition-colors disabled:opacity-40"
-                  >
+                  <button onClick={() => setActivePhoto((p) => Math.min(photos.length - 1, p + 1))} disabled={activePhoto === photos.length - 1}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-soft hover:bg-white transition-colors disabled:opacity-40">
                     <ChevronRight className="w-5 h-5 text-foreground" />
                   </button>
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                  <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-1.5">
                     {photos.map((_: string, i: number) => (
-                      <button
-                        key={i}
-                        onClick={() => setActivePhoto(i)}
-                        className={`w-2 h-2 rounded-full transition-all ${i === activePhoto ? "bg-white w-4" : "bg-white/50"}`}
-                      />
+                      <button key={i} onClick={() => setActivePhoto(i)}
+                        className={`w-2 h-2 rounded-full transition-all ${i === activePhoto ? "bg-white w-4" : "bg-white/50"}`} />
+                    ))}
+                  </div>
+                  <div className="absolute bottom-4 right-4 flex gap-1.5">
+                    {photos.slice(0, 4).map((photo: string, i: number) => (
+                      <button key={i} onClick={() => setActivePhoto(i)}
+                        className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition-all ${i === activePhoto ? "border-white" : "border-white/40"}`}>
+                        <img src={photo} alt={`${listing.name} photo ${i + 1}`} className="w-full h-full object-cover" />
+                      </button>
                     ))}
                   </div>
                 </>
-              )}
-
-              {/* Photo thumbnails */}
-              {photos.length > 1 && (
-                <div className="absolute bottom-4 right-4 flex gap-1.5">
-                  {photos.slice(0, 4).map((photo: string, i: number) => (
-                    <button
-                      key={i}
-                      onClick={() => setActivePhoto(i)}
-                      className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition-all ${i === activePhoto ? "border-white" : "border-white/40"}`}
-                    >
-                      <img src={photo} alt="" className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
               )}
             </>
           ) : (
@@ -128,29 +164,19 @@ export default function ListingDetail() {
               <span className="text-8xl">{meta.emoji}</span>
             </div>
           )}
-
-          {/* Back button */}
           <div className="absolute top-4 left-4">
-            <Link
-              to="/listings"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur rounded-2xl text-sm font-medium text-foreground hover:bg-white transition-colors shadow-soft"
-            >
+            <Link to="/listings"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur rounded-2xl text-sm font-medium text-foreground hover:bg-white transition-colors shadow-soft">
               <ArrowLeft className="w-4 h-4" /> All listings
             </Link>
           </div>
-
-          {/* Action buttons */}
           <div className="absolute top-4 right-4 flex gap-2">
-            <button
-              onClick={() => setSaved(!saved)}
-              className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-soft hover:bg-white transition-colors"
-            >
+            <button onClick={() => setSaved(!saved)}
+              className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-soft hover:bg-white transition-colors">
               <Heart className={`w-4 h-4 ${saved ? "fill-red-500 text-red-500" : "text-foreground"}`} />
             </button>
-            <button
-              onClick={() => navigator.share?.({ title: listing.name, url: window.location.href })}
-              className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-soft hover:bg-white transition-colors"
-            >
+            <button onClick={() => navigator.share?.({ title: listing.name, url: window.location.href })}
+              className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-soft hover:bg-white transition-colors">
               <Share2 className="w-4 h-4 text-foreground" />
             </button>
           </div>
@@ -160,27 +186,23 @@ export default function ListingDetail() {
       {/* Main Content */}
       <section className="container mx-auto py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8">
-
           {/* Left Column */}
           <div>
-            {/* Category & Title */}
             <div className="mb-6">
-              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full mb-3 ${meta.color}`}>
-                {meta.emoji} {listing.category}
-              </span>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${meta.color}`}>
+                  {meta.emoji} {listing.category}
+                </span>
+                <span className="text-xs text-muted-foreground">{listing.city}, FL</span>
+              </div>
               <h1 className="font-display text-3xl md:text-4xl font-semibold text-balance text-foreground leading-tight">
                 {listing.name}
               </h1>
-
-              {/* Rating & Location */}
               <div className="flex flex-wrap items-center gap-4 mt-4">
                 {listing.rating && (
                   <div className="flex items-center gap-1.5">
                     {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-4 h-4 ${i < Math.round(listing.rating) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
-                      />
+                      <Star key={i} className={`w-4 h-4 ${i < Math.round(listing.rating) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
                     ))}
                     <span className="font-semibold text-foreground ml-1">{listing.rating.toFixed(1)}</span>
                     <span className="text-muted-foreground text-sm">({listing.review_count?.toLocaleString()} reviews)</span>
@@ -188,14 +210,12 @@ export default function ListingDetail() {
                 )}
                 {listing.city && (
                   <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                    <MapPin className="w-3.5 h-3.5 text-primary" />
-                    {listing.city}, FL
+                    <MapPin className="w-3.5 h-3.5 text-primary" />{listing.city}, FL
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Description */}
             {listing.description && (
               <div className="mb-8">
                 <h2 className="font-display text-xl font-semibold text-foreground mb-3">About</h2>
@@ -203,7 +223,6 @@ export default function ListingDetail() {
               </div>
             )}
 
-            {/* Schedules/Pricing */}
             {schedules.length > 0 && (
               <div className="mb-8">
                 <h2 className="font-display text-xl font-semibold text-foreground mb-4">Options & Pricing</h2>
@@ -233,7 +252,6 @@ export default function ListingDetail() {
               </div>
             )}
 
-            {/* Hours */}
             {listing.hours && listing.hours.length > 0 && (
               <div className="mb-8">
                 <h2 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -250,7 +268,6 @@ export default function ListingDetail() {
               </div>
             )}
 
-            {/* Location */}
             {listing.address && (
               <div className="mb-8">
                 <h2 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -258,24 +275,31 @@ export default function ListingDetail() {
                 </h2>
                 <div className="bg-card rounded-2xl border border-border/40 shadow-soft p-5">
                   <p className="text-muted-foreground">{listing.address}</p>
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(listing.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-primary hover:underline"
-                  >
+                  <a href={`https://maps.google.com/?q=${encodeURIComponent(listing.address)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-primary hover:underline">
                     <MapPin className="w-3.5 h-3.5" /> Get directions
                   </a>
                 </div>
               </div>
             )}
+
+            {/* SEO-friendly breadcrumb */}
+            <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground flex items-center gap-1.5 mt-4">
+              <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
+              <span>/</span>
+              <Link to="/listings" className="hover:text-foreground transition-colors">Listings</Link>
+              <span>/</span>
+              <Link to={`/listings?category=${encodeURIComponent(listing.category)}`} className="hover:text-foreground transition-colors">{listing.category}</Link>
+              <span>/</span>
+              <span className="text-foreground">{listing.name}</span>
+            </nav>
           </div>
 
           {/* Right Column — Sticky Booking Card */}
           <div>
             <div className="sticky top-6">
               <div className="bg-card rounded-3xl border border-border/40 shadow-soft overflow-hidden">
-                {/* Price header */}
                 <div className="bg-gradient-warm p-6 border-b border-border/40">
                   {schedules.length > 0 ? (
                     <div>
@@ -286,14 +310,10 @@ export default function ListingDetail() {
                       {hasFree && <p className="text-sm text-primary font-medium mt-1">Free trial available!</p>}
                     </div>
                   ) : (
-                    <div>
-                      <p className="font-display text-2xl font-semibold text-foreground">Contact for pricing</p>
-                    </div>
+                    <p className="font-display text-2xl font-semibold text-foreground">Contact for pricing</p>
                   )}
                 </div>
-
                 <div className="p-6 space-y-3">
-                  {/* Rating summary */}
                   {listing.rating && (
                     <div className="flex items-center justify-between pb-4 border-b border-border/40">
                       <div className="flex items-center gap-2">
@@ -307,44 +327,25 @@ export default function ListingDetail() {
                       <span className="text-sm text-muted-foreground">{listing.review_count?.toLocaleString()} reviews</span>
                     </div>
                   )}
-
-                  {/* Book Now button */}
                   {schedules.length > 0 && (
-                    <Button
-                      onClick={() => setShowBooking(true)}
-                      className="w-full h-12 rounded-2xl text-base font-semibold"
-                    >
+                    <Button onClick={() => setShowBooking(true)} className="w-full h-12 rounded-2xl text-base font-semibold">
                       <Calendar className="w-4 h-4 mr-2" />
                       Book Now{lowestPrice !== null && lowestPrice > 0 ? ` · From $${lowestPrice}` : hasFree ? " · Free Trial" : ""}
                     </Button>
                   )}
-
-                  {/* Contact buttons */}
                   {listing.phone && (
-                    <a
-                      href={`tel:${listing.phone}`}
-                      className="flex items-center justify-center gap-2 w-full h-11 rounded-2xl border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
-                    >
-                      <Phone className="w-4 h-4 text-primary" />
-                      {listing.phone}
+                    <a href={`tel:${listing.phone}`}
+                      className="flex items-center justify-center gap-2 w-full h-11 rounded-2xl border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
+                      <Phone className="w-4 h-4 text-primary" />{listing.phone}
                     </a>
                   )}
-
                   {listing.website && (
-                    <a
-                      href={listing.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full h-11 rounded-2xl border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
-                    >
-                      <Globe className="w-4 h-4 text-primary" />
-                      Visit Website
+                    <a href={listing.website} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full h-11 rounded-2xl border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
+                      <Globe className="w-4 h-4 text-primary" />Visit Website
                     </a>
                   )}
-
-                  <p className="text-xs text-center text-muted-foreground pt-2">
-                    Free cancellation available on most bookings
-                  </p>
+                  <p className="text-xs text-center text-muted-foreground pt-2">Free cancellation on most bookings</p>
                 </div>
               </div>
             </div>
@@ -353,15 +354,11 @@ export default function ListingDetail() {
       </section>
 
       <SiteFooter />
-
-      {/* Booking Modal */}
       {showBooking && (
-        <BookingModal
-          listingId={listingId}
-          listingName={listing.name}
-          onClose={() => setShowBooking(false)}
-        />
+        <BookingModal listingId={listingId} listingName={listing.name} onClose={() => setShowBooking(false)} />
       )}
     </div>
   );
 }
+
+export default ListingDetailContent;
