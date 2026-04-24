@@ -15,16 +15,13 @@ const categoryMeta: Record<string, { emoji: string; color: string }> = {
 
 export function ListingCard({ listing }: ListingCardProps) {
   const meta = categoryMeta[listing.category] || { emoji: "🎉", color: "bg-muted text-muted-foreground" };
-  // Use slug if available, fall back to ID
   const url = listing.slug ? `/listing/${listing.slug}` : `/listing/${listing.id}`;
 
   return (
     <Link to={url} className="group bg-card rounded-3xl shadow-soft border border-border/40 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 block">
       <div className="relative h-48 bg-muted overflow-hidden">
         {listing.photo ? (
-          <img
-            src={listing.photo}
-            alt={listing.name}
+          <img src={listing.photo} alt={listing.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/400x300?text=No+Image"; }}
           />
