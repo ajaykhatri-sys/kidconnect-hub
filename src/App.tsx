@@ -31,7 +31,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/browse" element={<Browse />} />
               <Route path="/listings" element={<Listings />} />
-              <Route path="/listing/:id" element={<ListingDetail />} />
+              {/* Support both slug and ID based URLs */}
               <Route path="/listing/:slug" element={<ListingDetail />} />
               <Route path="/for-business" element={<ForBusiness />} />
               <Route path="/auth" element={<Auth />} />
@@ -39,7 +39,6 @@ const App = () => (
               <Route path="/admin" element={<Admin />} />
               <Route path="/business/auth" element={<BusinessAuth />} />
               <Route path="/business/dashboard" element={<BusinessDashboard />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BusinessAuthProvider>
