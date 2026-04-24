@@ -15,6 +15,7 @@ const categoryMeta: Record<string, { emoji: string; color: string }> = {
 
 export function ListingCard({ listing }: ListingCardProps) {
   const meta = categoryMeta[listing.category] || { emoji: "🎉", color: "bg-muted text-muted-foreground" };
+  // Use slug if available, fall back to ID
   const url = listing.slug ? `/listing/${listing.slug}` : `/listing/${listing.id}`;
 
   return (
